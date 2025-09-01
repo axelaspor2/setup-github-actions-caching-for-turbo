@@ -9,6 +9,8 @@ import {
   openSync,
   statSync
 } from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
 import waitOn from 'wait-on'
 import axios from 'axios'
 import type {AxiosInstance} from 'axios'
@@ -18,7 +20,8 @@ import {Env} from 'lazy-strict-env'
 import {z} from 'zod'
 
 const serverPort = 41230
-const serverLogFile = '/tmp/turbogha.log'
+const tempDir = tmpdir()
+const serverLogFile = join(tempDir, 'turbogha.log')
 const cacheVersion = 'turbogha_v2'
 const cachePrefix = core.getInput('cache-prefix') || 'turbogha_'
 const getCacheKey = (hash: string): string => `${cachePrefix}${hash}`
@@ -175,7 +178,7 @@ async function saveCache(
     ctx.log.info(
       `Using filesystem cache because cache API env vars are not set`
     )
-    await pipeline(stream, createWriteStream(`/tmp/${hash}.tg.bin`))
+    await pipeline(stream, createWriteStream(join(tempDir, `${hash}.tg.bin`)))
     return
   }
   const client = getCacheClient()
@@ -230,7 +233,7 @@ async function getCache(
   hash: string
 ): Promise<[number | undefined, Readable, string | undefined] | null> {
   if (!env.valid) {
-    const path = `/tmp/${hash}.tg.bin`
+    const path = join(tempDir, `${hash}.tg.bin`)
     if (!existsSync(path)) return null
     const size = statSync(path).size
     return [size, createReadStream(path), undefined]
